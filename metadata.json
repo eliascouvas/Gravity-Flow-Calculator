@@ -1,0 +1,5 @@
+{
+  "name": "Sewage Pipe Angle Calculator",
+  "description": "Calculate the angle and slope of sewage pipes based on length and rise measurements.",
+  "requestFramePermissions": []
+}
