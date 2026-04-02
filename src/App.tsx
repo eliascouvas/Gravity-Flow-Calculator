@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Calculator, Info, ArrowRightLeft, Ruler, ChevronDown, Play, Droplets, Sun, Moon, AlertTriangle, Settings, Layers, Languages } from 'lucide-react';
+import { Calculator, Info, ArrowRightLeft, Ruler, ChevronDown, Play, Droplets, Sun, Moon, AlertTriangle, Settings, Layers, Languages, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 type Unit = 'm' | 'cm' | 'mm' | 'ft' | 'in';
@@ -41,7 +41,14 @@ const translations = {
     footer: 'Professional Engineering Tool • Built with Precision',
     errorRise: 'Rise difference cannot exceed pipe length',
     errorDiam: 'Invalid diameter',
-    enterParams: 'Enter valid parameters to see results'
+    enterParams: 'Enter valid parameters to see results',
+    clearSediment: 'Clear Sediment',
+    elbow: 'PVC Sweep Elbow',
+    elbowNone: 'None',
+    elbow90: '90° Sweep',
+    elbow45: '45° Sweep',
+    elbowHeight: 'Elbow Height (cm)',
+    elbowNote: 'Adds vertical height to the start point'
   },
   el: {
     title: 'Υπολογιστης Ροης Βαρυτητας',
@@ -78,7 +85,14 @@ const translations = {
     footer: 'Επαγγελματικο Εργαλειο Μηχανικης • Κατασκευασμενο με Ακριβεια',
     errorRise: 'Η διαφορα ανυψωσης δεν μπορει να υπερβαινει το μηκος του σωληνα',
     errorDiam: 'Μη εγκυρη διαμετρος',
-    enterParams: 'Εισαγαγετε εγκυρες παραμετρους για να δειτε αποτελεσματα'
+    enterParams: 'Εισαγαγετε εγκυρες παραμετρους για να δειτε αποτελεσματα',
+    clearSediment: 'Καθαρισμος Ιζηματος',
+    elbow: 'PVC Καμπυλη (Sweep)',
+    elbowNone: 'Καμια',
+    elbow90: '90° Sweep',
+    elbow45: '45° Sweep',
+    elbowHeight: 'Υψος Καμπυλης (cm)',
+    elbowNote: 'Προσθετει κατακορυφο υψος στο σημειο εκκινησης'
   }
 };
 
@@ -95,6 +109,8 @@ export default function App() {
   const [material, setMaterial] = useState<'PVC' | 'Acrylic'>('PVC');
   const [diameter, setDiameter] = useState<string>('100');
   const [atm, setAtm] = useState<string>('10');
+  const [elbowType, setElbowType] = useState<'none' | '90' | '45'>('none');
+  const [elbowHeight, setElbowHeight] = useState<string>('10');
 
   // Manning's n values
   const roughness = {
@@ -122,8 +138,12 @@ export default function App() {
 
     // Convert everything to meters for internal calculation
     const L = L_raw * toMeters[unit];
-    const h1 = h1_cm * 0.01;
+    const h1_base = h1_cm * 0.01;
     const h2 = h2_cm * 0.01;
+
+    // Add elbow height if applicable
+    const elbowH = elbowType !== 'none' ? (parseFloat(elbowHeight) * 0.01 || 0) : 0;
+    const h1 = h1_base + elbowH;
 
     const deltaH = Math.abs(h1 - h2);
     
@@ -154,9 +174,10 @@ export default function App() {
       velocity, // in m/s
       n,
       D_mm: parseFloat(diameter),
+      elbowH: elbowH / 0.01,
       error: null
     };
-  }, [length, riseStart, riseEnd, unit, material, diameter]);
+  }, [length, riseStart, riseEnd, unit, material, diameter, elbowType, elbowHeight]);
 
   const handleSimulate = () => {
     if (calculations && !calculations.error) {
@@ -177,27 +198,52 @@ export default function App() {
   // Reset simulation state when inputs change
   useEffect(() => {
     setHasSimulated(false);
-  }, [length, riseStart, riseEnd, unit]);
+  }, [length, riseStart, riseEnd, unit, elbowType, elbowHeight]);
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] text-[#1A1A1A] font-sans p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <header className="mb-12 flex items-center justify-between border-b border-[#E5E5E5] pb-6">
-          <div className="flex-1">
-            <h1 className="text-3xl font-light tracking-tight text-[#111]">
-              {lang === 'en' ? (
-                <>Gravity <span className="font-semibold">Flow</span> Calculator</>
-              ) : (
-                <>Υπολογιστής <span className="font-semibold">Ροής</span> Βαρύτητας</>
-              )}
-            </h1>
-            <p className="text-sm text-[#666] mt-1 uppercase tracking-wider font-medium">
-              {t.subtitle}
-            </p>
+        <header className="mb-12 flex flex-col md:flex-row md:items-center justify-between border-b border-[#E5E5E5] pb-6 gap-6">
+          <div className="flex items-center gap-5">
+            <motion.div 
+              initial={{ rotate: -10, scale: 0.9 }}
+              animate={{ rotate: 0, scale: 1 }}
+              className="relative shrink-0 cursor-default hidden sm:block"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#111] via-[#333] to-[#111] flex items-center justify-center text-white shadow-2xl border border-white/10">
+                <span className="font-sans font-black text-xl tracking-tighter">RLVT</span>
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#3B82F6] rounded-full border-4 border-[#F5F5F5] shadow-sm" />
+            </motion.div>
+            
+            <div className="flex-1">
+              <h1 className="text-3xl font-light tracking-tight text-[#111]">
+                {lang === 'en' ? (
+                  <>Gravity <span className="font-semibold">Flow</span> Calculator</>
+                ) : (
+                  <>Υπολογιστης <span className="font-semibold">Ροης</span> Βαρυτητας</>
+                )}
+              </h1>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mt-1.5">
+                <p className="text-sm text-[#666] uppercase tracking-wider font-medium">
+                  {t.subtitle}
+                </p>
+                <div className="w-1 h-1 bg-[#DDD] rounded-full hidden sm:block" />
+                <div className="px-4 py-1.5 bg-[#111] rounded-lg shadow-md group">
+                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white">
+                    {lang === 'en' ? 'Created by' : 'Δημιουργηθηκε απο'}{' '}
+                    <span className="group-hover:bg-gradient-to-r group-hover:from-blue-400 group-hover:to-rose-400 group-hover:bg-clip-text group-hover:text-transparent transition-all duration-300 cursor-default">
+                      Elias Couvas
+                    </span>
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1 bg-white border border-[#EEE] rounded-lg px-2 py-1 shadow-sm">
+          
+          <div className="flex items-center justify-between md:justify-end gap-4">
+            <div className="flex items-center gap-1 bg-white border border-[#EEE] rounded-lg px-3 py-1.5 shadow-sm">
               <Languages size={14} className="text-[#999]" />
               <select 
                 value={lang} 
@@ -208,16 +254,16 @@ export default function App() {
                 <option value="el">EL</option>
               </select>
             </div>
-            <div className="hidden md:flex items-center gap-2 text-[#999] text-xs font-mono">
+            <div className="flex items-center gap-2 text-[#999] text-xs font-mono bg-[#F9F9F9] px-3 py-1.5 rounded-lg border border-[#EEE]">
               <Calculator size={14} />
-              <span>v1.4.0</span>
+              <span>v1.5.0</span>
             </div>
           </div>
         </header>
 
         <main className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Inputs Section */}
-          <section className="lg:col-span-5 space-y-6">
+          <section className="lg:col-span-4 space-y-6">
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E5E5E5]">
               <div className="flex items-center gap-2 mb-6 text-[#111]">
                 <Settings size={18} className="text-[#4A4A4A]" />
@@ -279,6 +325,73 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#E5E5E5]">
+              <div className="flex items-center gap-2 mb-6 text-[#111]">
+                <Layers size={18} className="text-[#4A4A4A]" />
+                <h2 className="text-sm font-bold uppercase tracking-widest">{t.elbow}</h2>
+              </div>
+
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#999] uppercase mb-1.5 ml-1">
+                    {t.elbow}
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {(['none', '90', '45'] as const).map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setElbowType(type)}
+                        className={`px-3 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider transition-all border ${
+                          elbowType === type 
+                            ? 'bg-[#111] text-white border-[#111] shadow-md' 
+                            : 'bg-[#F9F9F9] text-[#666] border-[#EEE] hover:border-[#CCC]'
+                        }`}
+                      >
+                        {type === 'none' ? t.elbowNone : type === '90' ? t.elbow90 : t.elbow45}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <AnimatePresence>
+                  {elbowType !== 'none' && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="pt-2 space-y-4">
+                        <div>
+                          <label className="block text-[11px] font-bold text-[#999] uppercase mb-1.5 ml-1">
+                            {t.elbowHeight}
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              value={elbowHeight}
+                              onChange={(e) => setElbowHeight(e.target.value)}
+                              className="w-full bg-[#F9F9F9] border border-[#EEE] rounded-xl px-4 py-3 focus:outline-none focus:border-[#4A4A4A] transition-colors font-mono text-lg"
+                              placeholder="10"
+                            />
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-[#AAA] uppercase">
+                              cm
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-xl border border-blue-100">
+                          <Info size={14} className="text-blue-500 shrink-0 mt-0.5" />
+                          <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
+                            {t.elbowNote}
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
 
@@ -375,7 +488,10 @@ export default function App() {
                 </button>
               </div>
             </div>
+          </section>
 
+          {/* Results Section */}
+          <section className="lg:col-span-8 space-y-6">
             {/* Visual Aid */}
             <div className={`rounded-2xl p-6 shadow-lg overflow-hidden relative transition-colors duration-300 ${
               isSchematicLight ? 'bg-white border border-[#E5E5E5] text-[#111]' : 'bg-[#151619] text-white'
@@ -385,22 +501,39 @@ export default function App() {
                   <ArrowRightLeft size={14} />
                   <span className="text-[10px] font-bold uppercase tracking-widest">{t.schematic}</span>
                 </div>
-                <button 
-                  onClick={() => setIsSchematicLight(!isSchematicLight)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    isSchematicLight ? 'bg-[#F5F5F5] hover:bg-[#EEE]' : 'bg-[#252629] hover:bg-[#353639]'
-                  }`}
-                >
-                  {isSchematicLight ? <Moon size={14} /> : <Sun size={14} />}
-                </button>
+                <div className="flex items-center gap-3">
+                  {hasSimulated && calculations?.velocity < 0.7 && (
+                    <motion.button
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      onClick={() => setHasSimulated(false)}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${
+                        isSchematicLight 
+                          ? 'bg-red-50 text-red-600 hover:bg-red-100' 
+                          : 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
+                      }`}
+                    >
+                      <Trash2 size={12} />
+                      {t.clearSediment}
+                    </motion.button>
+                  )}
+                  <button 
+                    onClick={() => setIsSchematicLight(!isSchematicLight)}
+                    className={`p-2 rounded-lg transition-colors ${
+                      isSchematicLight ? 'bg-[#F5F5F5] hover:bg-[#EEE]' : 'bg-[#252629] hover:bg-[#353639]'
+                    }`}
+                  >
+                    {isSchematicLight ? <Moon size={14} /> : <Sun size={14} />}
+                  </button>
+                </div>
               </div>
               
               <div className="flex flex-col md:flex-row items-center justify-center gap-6 relative">
-                <div className="flex-1 w-full h-48 flex items-center justify-center">
-                  <svg width="100%" height="100%" viewBox="0 -10 200 110" preserveAspectRatio="xMidYMid meet">
+                <div className="flex-1 w-full h-80 flex items-center justify-center">
+                  <svg width="100%" height="100%" viewBox="0 -10 250 110" preserveAspectRatio="xMidYMid meet">
                     {/* Ground Line */}
                     <line 
-                      x1="10" y1="90" x2="190" y2="90" 
+                      x1="10" y1="90" x2="240" y2="90" 
                       stroke={isSchematicLight ? "#EEE" : "#333"} 
                       strokeWidth="1" 
                       strokeDasharray="4 4" 
@@ -409,11 +542,26 @@ export default function App() {
                     {/* Pipe */}
                     {calculations && !calculations.error && (
                       <>
+                        {/* Elbow Visualization (Curved Sweep) */}
+                        {elbowType !== 'none' && (
+                          <motion.path
+                            initial={{ pathLength: 0 }}
+                            animate={{ pathLength: 1 }}
+                            d={`M 20 ${90 - ((parseFloat(riseStart) + (parseFloat(elbowHeight) || 0)) / 200) * 80} 
+                               Q 20 ${90 - (parseFloat(riseStart) / 200) * 80} 
+                                 ${20 + 10} ${90 - (parseFloat(riseStart) / 200) * 80}`}
+                            fill="none"
+                            stroke={isSchematicLight ? "#CCC" : "#444"}
+                            strokeWidth="8"
+                            strokeLinecap="round"
+                          />
+                        )}
+
                         {/* Pipe Body */}
                         <line 
-                          x1="20" 
+                          x1={elbowType !== 'none' ? 20 + 10 : 20} 
                           y1={90 - (parseFloat(riseStart) / 200) * 80} 
-                          x2="180" 
+                          x2="230" 
                           y2={90 - (parseFloat(riseEnd) / 200) * 80} 
                           stroke={isSchematicLight ? "#E5E5E5" : "#333"} 
                           strokeWidth="8" 
@@ -422,7 +570,7 @@ export default function App() {
                         <line 
                           x1="20" 
                           y1={90 - (parseFloat(riseStart) / 200) * 80} 
-                          x2="180" 
+                          x2="230" 
                           y2={90 - (parseFloat(riseEnd) / 200) * 80} 
                           stroke={isSchematicLight ? "#DDD" : "#444"} 
                           strokeWidth="6" 
@@ -434,10 +582,10 @@ export default function App() {
                           <motion.path
                             initial={{ opacity: 0, scaleY: 0 }}
                             animate={{ opacity: 0.6, scaleY: 1 }}
-                            d={`M 20 ${90 - (parseFloat(riseStart) / 200) * 80 + 3} 
-                               L 180 ${90 - (parseFloat(riseEnd) / 200) * 80 + 3} 
-                               L 180 ${90 - (parseFloat(riseEnd) / 200) * 80 + 1} 
-                               L 20 ${90 - (parseFloat(riseStart) / 200) * 80 + 1} Z`}
+                            d={`M ${elbowType !== 'none' ? 20 + 10 : 20} ${90 - (parseFloat(riseStart) / 200) * 80 + 3} 
+                               L 230 ${90 - (parseFloat(riseEnd) / 200) * 80 + 3} 
+                               L 230 ${90 - (parseFloat(riseEnd) / 200) * 80 + 1} 
+                               L ${elbowType !== 'none' ? 20 + 10 : 20} ${90 - (parseFloat(riseStart) / 200) * 80 + 1} Z`}
                             fill="#4B3621"
                             className="origin-bottom"
                           />
@@ -453,9 +601,9 @@ export default function App() {
                                 animate={{ pathLength: 1, opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 transition={{ duration: 1.2, ease: "linear" }}
-                                x1="20" 
+                                x1={elbowType !== 'none' ? 20 + 10 : 20} 
                                 y1={90 - (parseFloat(riseStart) / 200) * 80} 
-                                x2="180" 
+                                x2="230" 
                                 y2={90 - (parseFloat(riseEnd) / 200) * 80} 
                                 stroke="#3B82F6" 
                                 strokeWidth="4" 
@@ -469,12 +617,12 @@ export default function App() {
                                   r={i % 2 === 0 ? 1.5 : 1}
                                   fill={i % 2 === 0 ? (isSchematicLight ? "#3B82F6" : "#FFF") : "#8B4513"} // Bubbles (blue in light, white in dark), brown residues
                                   initial={{ 
-                                    cx: 20, 
+                                    cx: elbowType !== 'none' ? 20 + 10 : 20, 
                                     cy: 90 - (parseFloat(riseStart) / 200) * 80,
                                     opacity: 0 
                                   }}
                                   animate={{ 
-                                    cx: 180, 
+                                    cx: 230, 
                                     cy: 90 - (parseFloat(riseEnd) / 200) * 80,
                                     opacity: [0, 1, 1, 0]
                                   }}
@@ -492,21 +640,21 @@ export default function App() {
 
                         {/* Labels */}
                         <text 
-                          x="20" 
+                          x="5" 
                           y={90 - (parseFloat(riseStart) / 200) * 80 - 12} 
                           fill={isSchematicLight ? "#999" : "#666"} 
-                          fontSize="6" 
-                          textAnchor="middle"
+                          fontSize="10" 
+                          textAnchor="start"
                           className="font-bold tracking-wider"
                         >
                           {t.start} ({riseStart}cm)
                         </text>
                         <text 
-                          x="180" 
+                          x="245" 
                           y={90 - (parseFloat(riseEnd) / 200) * 80 - 12} 
                           fill={isSchematicLight ? "#999" : "#666"} 
-                          fontSize="6" 
-                          textAnchor="middle"
+                          fontSize="10" 
+                          textAnchor="end"
                           className="font-bold tracking-wider"
                         >
                           {t.exit} ({riseEnd}cm)
@@ -539,10 +687,7 @@ export default function App() {
                 </div>
               </div>
             </div>
-          </section>
 
-          {/* Results Section */}
-          <section className="lg:col-span-7">
             {calculations?.error ? (
               <div className="bg-red-50 border border-red-100 rounded-2xl p-8 flex flex-col items-center justify-center text-center h-full">
                 <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
@@ -649,11 +794,77 @@ export default function App() {
           </section>
         </main>
 
-        <footer className="mt-12 pt-8 border-top border-[#E5E5E5] text-center">
+        <footer className="mt-16 pt-12 border-t border-[#E5E5E5] flex flex-col items-center gap-8">
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex items-center gap-4 cursor-default"
+          >
+            <div className="relative">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#111] via-[#333] to-[#111] flex items-center justify-center text-white shadow-xl border border-white/10">
+                <span className="font-sans font-black text-base tracking-tighter">RLVT</span>
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#3B82F6] rounded-full border-2 border-[#F5F5F5] shadow-sm" />
+            </div>
+            <div className="text-left">
+              <div className="px-3 py-1 bg-[#111] rounded-md mb-1 shadow-sm">
+                <p className="text-[9px] font-black uppercase tracking-[0.15em] text-white">
+                  {lang === 'en' ? 'Created by' : 'Δημιουργηθηκε απο'}
+                </p>
+              </div>
+              <p className="text-lg font-light tracking-tight text-[#111] ml-0.5 hover:bg-gradient-to-r hover:from-blue-600 hover:to-rose-600 hover:bg-clip-text hover:text-transparent transition-all duration-300 cursor-default">
+                Elias <span className="font-semibold">Couvas</span>
+              </p>
+            </div>
+          </motion.div>
+
           <p className="text-[10px] text-[#AAA] uppercase tracking-[0.2em]">
             {t.footer}
           </p>
         </footer>
+      </div>
+      {/* Pro Tips & Warnings Section */}
+      <div className="max-w-4xl mx-auto mt-12 border-t border-[#E5E5E5] pt-8 pb-12">
+        <div className="flex items-center gap-2 mb-6">
+          <AlertTriangle className="w-5 h-5 text-[#D97706]" />
+          <h2 className="text-xl font-bold tracking-tight">
+            {lang === 'en' ? 'Pro Tips & Warnings' : 'Επαγγελματικές Συμβουλές & Προειδοποιήσεις'}
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="space-y-4">
+            <h3 className="font-bold text-[#1A1A1A] flex items-center gap-2">
+              <Info className="w-4 h-4 text-[#3B82F6]" />
+              {lang === 'en' ? 'What Slope Actually Means' : 'Τι Σημαίνει Πραγματικά η Κλίση'}
+            </h3>
+            <p className="text-sm text-[#4B5563] leading-relaxed">
+              {lang === 'en' 
+                ? 'Slope (or "fall") is determined strictly by the vertical drop divided by the horizontal run. It depends only on your start height, end height, and horizontal distance. Adding fittings like elbows does not increase the overall slope of the pipe itself.'
+                : 'Η κλίση καθορίζεται αυστηρά από την κατακόρυφη πτώση διαιρούμενη με την οριζόντια διαδρομή. Εξαρτάται μόνο από το ύψος έναρξης, το ύψος λήξης και την οριζόντια απόσταση. Η προσθήκη εξαρτημάτων όπως οι γωνίες δεν αυξάνει τη συνολική κλίση του ίδιου του σωλήνα.'}
+            </p>
+            <div className="bg-white p-3 rounded border border-[#E5E5E5] text-center font-mono text-xs">
+              {lang === 'en' ? 'Slope = Vertical Drop / Horizontal Run' : 'Κλίση = Κατακόρυφη Πτώση / Οριζόντια Διαδρομή'}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="font-bold text-[#1A1A1A] flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-[#EF4444]" />
+              {lang === 'en' ? 'The Danger of "Humps"' : 'Ο Κίνδυνος των "Καμπουρών"'}
+            </h3>
+            <p className="text-sm text-[#4B5563] leading-relaxed">
+              {lang === 'en'
+                ? 'Avoid upward jogs followed by downward drops. This creates a "hump" or high spot that leads to water pooling, sediment buildup, and air traps. In gravity drainage: "Never go up unless you absolutely must."'
+                : 'Αποφύγετε τις ανοδικές κινήσεις που ακολουθούνται από καθοδικές πτώσεις. Αυτό δημιουργεί μια "καμπούρα" ή υψηλό σημείο που οδηγεί σε συσσώρευση νερού, ιζημάτων και παγίδες αέρα. Στην αποστράγγιση βαρύτητας: "Ποτέ μην πηγαίνετε πάνω εκτός αν είναι απολύτως απαραίτητο."'}
+            </p>
+            <ul className="text-xs space-y-1 text-[#D97706] font-medium">
+              <li>• {lang === 'en' ? 'Continuous downward slope is best (1-2%)' : 'Η συνεχής καθοδική κλίση είναι η καλύτερη (1-2%)'}</li>
+              <li>• {lang === 'en' ? 'Uniform fall prevents blockages' : 'Η ομοιόμορφη πτώση αποτρέπει τα φραξίματα'}</li>
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );
